@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>📷 مسح الباركود الشريطي</title>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    :root {
+      --bg: #f4faff;
+      --text: #333;
+      --status: #007acc;
+      --success: #28a745;
+    }
+    [data-theme="dark"] {
+      --bg: #121212;
+      --text: #eee;
+      --status: #4dabf7;
+      --success: #58d68d;
+    }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      text-align: center;
+      direction: rtl;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+    h1 {
+      color: var(--status);
+      padding: 15px;
+    }
+    #reader {
+      width: 100vw;
+      height: 75vh;
+      margin: auto;
+      border-top: 2px solid var(--status);
+    }
+    #status {
+      padding: 15px;
+      font-size: 16px;
+      color: var(--status);
+    }
+    #scannedText {
+      font-size: 18px;
+      color: var(--success);
+      font-weight: bold;
+    }
+    #cameraSelect, #resolutionSelect {
+      margin-top: 10px;
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    .start-btn {
+      margin-top: 15px;
+      background-color: var(--status);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-size: 16px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .toggle-btn {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      color: var(--status);
+    }
+  </style>
+</head>
+<body data-theme-init>
+  <button class="toggle-btn" onclick="toggleTheme()">🌓</button>
+  <h1>📦 امسح الباركود لإضافة منتج</h1>
+
+  <select id="cameraSelect"></select>
+  <select id="resolutionSelect">
+    <option value="320x240">منخفضة 320x240</option>
+    <option value="640x480" selected>متوسطة 640x480</option>
+    <option value="1280x720">عالية 1280x720</option>
+  </select>
+  <button class="start-btn" onclick="startSelectedCamera()">🎬 بدء المسح</button>
+
+  <div id="reader"></div>
+  <div id="status">📸 اختر الكاميرا ثم اضغط بدء المسح</div>
+  <div id="scannedText"></div>
+
+  <script>
+    const reader = new Html5Qrcode("reader");
+    const cameraSelect = document.getElementById("cameraSelect");
+    const resolutionSelect = document.getElementById("resolutionSelect");
+    let cameras = [];
+
+    function onScanSuccess(decodedText) {
+      document.getElementById("scannedText").innerText = `✅ الكود: ${decodedText}`;
+      document.getElementById("status").innerText = "🔄 جاري معالجة المنتج...";
+
+      reader.stop().then(() => {
+        fetch("/api/auto_add_product?barcode=" + encodeURIComponent(decodedText))
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) {
+              window.location.href = "/enter_expiration_date?barcode=" + encodeURIComponent(decodedText);
+            } else {
+              document.getElementById("status").innerText = "❌ " + (data.message || "لم يتم العثور على المنتج.");
+            }
+          })
+          .catch(() => {
+            document.getElementById("status").innerText = "❌ فشل الاتصال بالخادم.";
+          });
+      });
+    }
+
+    function onScanFailure() {}
+
+    function parseResolution(value) {
+      const [w, h] = value.split("x").map(Number);
+      return { width: w, height: h };
+    }
+
+    function startSelectedCamera() {
+      const selectedId = cameraSelect.value;
+      const resolution = parseResolution(resolutionSelect.value);
+      if (!selectedId) {
+        alert("❗ اختر الكاميرا أولاً");
+        return;
+      }
+
+      document.getElementById("reader").style.display = "block";
+      reader.start(
+        { deviceId: { exact: selectedId } },
+        {
+          fps: 15,
+          aspectRatio: 1.777,
+          supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
+          formatsToSupport: [
+            Html5QrcodeSupportedFormats.EAN_13,
+            Html5QrcodeSupportedFormats.CODE_128,
+            Html5QrcodeSupportedFormats.UPC_A
+          ],
+          ...resolution
+        },
+        onScanSuccess,
+        onScanFailure
+      ).then(() => {
+        document.getElementById("status").innerText = "📡 الكاميرا تعمل... وجاري المسح";
+      }).catch(err => {
+        document.getElementById("status").innerText = "❌ تعذر تشغيل الكاميرا: " + err;
+      });
+    }
+
+    function toggleTheme() {
+      const root = document.documentElement;
+      const isDark = root.getAttribute("data-theme") === "dark";
+      const newTheme = isDark ? "light" : "dark";
+      root.setAttribute("data-theme", newTheme);
+      localStorage.setItem("theme", newTheme);
+    }
+
+    Html5Qrcode.getCameras().then(devices => {
+      cameras = devices;
+      if (cameras.length === 0) {
+        document.getElementById("status").innerText = "❌ لم يتم العثور على كاميرا.";
+        return;
+      }
+
+      cameras.forEach(cam => {
+        const option = document.createElement("option");
+        option.value = cam.id;
+        option.text = cam.label || "كاميرا";
+        cameraSelect.appendChild(option);
+      });
+
+      document.getElementById("status").innerText = "✅ الكاميرا جاهزة، اختر واحدة وابدأ المسح.";
+
+      const saved = localStorage.getItem("theme");
+      if (saved === "dark") {
+        document.documentElement.setAttribute("data-theme", "dark");
+      }
+    }).catch(() => {
+      document.getElementById("status").innerText = "❌ تعذر الوصول إلى الكاميرا.";
+    });
+  </script>
+</body>
+</html>
