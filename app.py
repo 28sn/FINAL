@@ -400,13 +400,35 @@ def index():
             users[username]["visits"] = users[username].get("visits", 0) + 1
             with open(USER_FILE, "w") as f:
                 json.dump(users, f, indent=2)
+
+    # ✅ زيادة عداد الزيارات
+    stats_file = os.path.join(BASE_DIR, "stats.json")
+    if os.path.exists(stats_file):
+        with open(stats_file, "r", encoding="utf-8") as f:
+            stats = json.load(f)
+    else:
+        stats = {"total_visits": 0}
+
+    stats["total_visits"] += 1
+
+    with open(stats_file, "w", encoding="utf-8") as f:
+        json.dump(stats, f, indent=2, ensure_ascii=False)
+
     return render_template("index.html")
 @app.route("/api/site_stats")
 def site_stats():
+    stats_file = os.path.join(BASE_DIR, "stats.json")
     users = load_users()
+
+    if os.path.exists(stats_file):
+        with open(stats_file, "r", encoding="utf-8") as f:
+            stats = json.load(f)
+    else:
+        stats = {"total_visits": 0}
+
     return jsonify({
         "total_users": len(users),
-        "total_visits": visit_counter
+        "total_visits": stats.get("total_visits", 0)
     })
 
 @app.route("/alerts")
