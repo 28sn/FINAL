@@ -68,7 +68,7 @@ def save_image(frame):
 # دالة لبدء المسح باستخدام كاميرا IP Webcam عبر الشبكة (Wi-Fi)
 def start_scan():
     # ضع عنوان URL الخاص بكاميرا IP Webcam هنا
-    url = "http://192.168.x.x:8080/video"  # قم بتعديل هذا إلى عنوان IP الخاص بك
+    url = "http://192.168.43.95:8080/video"  # قم بتعديل هذا إلى عنوان IP الخاص بك
 
     # الاتصال بالكاميرا عبر URL
     cap = cv2.VideoCapture(url)
