@@ -1,14 +1,12 @@
+import requests
 import cv2
 from pyzbar.pyzbar import decode
-import requests
 import time
-from datetime import datetime
 from flask import redirect, url_for
 import os
 
 # دالة للحصول على معلومات المنتج باستخدام Open Food Facts
 def get_product_info(barcode):
-    # 1. جرّب من Open Food Facts أولًا
     url = f'https://world.openfoodfacts.org/api/v0/product/{barcode}.json'
     response = requests.get(url)
     if response.status_code == 200:
@@ -17,8 +15,7 @@ def get_product_info(barcode):
             return product_data['product']
         else:
             print("❌ المنتج غير موجود في Open Food Facts. يحاول من الملف المحلي...")
-
-    # 2. لو ما نجح، حاول من الملف المحلي
+    
     local_info = read_local_barcode(barcode)
     if local_info:
         print("✅ تم العثور على المنتج في الملف المحلي.")
@@ -65,18 +62,18 @@ def save_image(frame):
     cv2.imwrite(filename, frame)
     print(f"Image saved as {filename}")
 
-# دالة لبدء المسح باستخدام كاميرا IP Webcam عبر الشبكة (Wi-Fi)
+# دالة لبدء المسح باستخدام كاميرا IP Webcam عبر URL
 def start_scan():
-    # ضع عنوان URL الخاص بكاميرا IP Webcam هنا
-    url = "http://192.168.43.95:8080/video"  # قم بتعديل هذا إلى عنوان IP الخاص بك
+    # URL كاميرا IP Webcam
+    url = "http://192.168.43.95:8080/video"  # تأكد من أن هذا هو عنوان IP الصحيح
 
-    # الاتصال بالكاميرا عبر URL
+    # الاتصال بكاميرا IP Webcam عبر URL
     cap = cv2.VideoCapture(url)
 
     if not cap.isOpened():
         return "❌ لا يمكن الوصول إلى كاميرا الويب."
 
-    # بدء المسح من الكاميرا
+    # بدء المسح من الكاميرا عبر URL
     while True:
         ret, frame = cap.read()
         if not ret:
