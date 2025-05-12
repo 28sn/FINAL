@@ -5,6 +5,7 @@ import time
 from datetime import datetime
 from flask import redirect, url_for
 import os
+
 # دالة للحصول على معلومات المنتج باستخدام Open Food Facts
 def get_product_info(barcode):
     # 1. جرّب من Open Food Facts أولًا
@@ -26,7 +27,6 @@ def get_product_info(barcode):
         print("❌ لا يوجد في الملف المحلي أيضًا.")
         return None
 
-    
 def read_local_barcode(barcode):
     filename = "local_barcodes.txt"
     if not os.path.exists(filename):
@@ -58,7 +58,6 @@ def read_local_barcode(barcode):
                 return data
     return None
 
-    
 # دالة لحفظ الصورة عند اكتشاف الباركود
 def save_image(frame):
     timestamp = time.strftime("%Y%m%d-%H%M%S")
@@ -66,31 +65,35 @@ def save_image(frame):
     cv2.imwrite(filename, frame)
     print(f"Image saved as {filename}")
 
-# دالة لبدء المسح باستخدام الكاميرا المتصلة عبر الشبكة (Wi-Fi)
+# دالة لبدء المسح باستخدام كاميرا IP Webcam عبر الشبكة (Wi-Fi)
 def start_scan():
-    # استخدم كاميرا الشبكة عبر IP بدلاً من الكاميرا المحلية
-    cap = cv2.VideoCapture("http://192.168.43.1:8080/video")
+    # ضع عنوان URL الخاص بكاميرا IP Webcam هنا
+    url = "http://192.168.x.x:8080/video"  # قم بتعديل هذا إلى عنوان IP الخاص بك
 
-  # تأكد من أن عنوان الـ IP والـ Port صحيحين
+    # الاتصال بالكاميرا عبر URL
+    cap = cv2.VideoCapture(url)
 
     if not cap.isOpened():
-        return "Error: Unable to connect to camera."
-    
+        return "❌ لا يمكن الوصول إلى كاميرا الويب."
+
+    # بدء المسح من الكاميرا
     while True:
         ret, frame = cap.read()
         if not ret:
-            return "Failed to capture frame"
-        
+            return "❌ فشل في التقاط الإطار"
+
+        # استخراج الباركود من الصورة
         barcodes = decode(frame)
         for barcode in barcodes:
             barcode_data = barcode.data.decode('utf-8')
             print(f"Barcode detected: {barcode_data}")
+            save_image(frame)  # حفظ الصورة عند اكتشاف الباركود
             cap.release()
             cv2.destroyAllWindows()
-            
+
             # توجيه المستخدم إلى صفحة إدخال تاريخ الانتهاء مع الباركود
             return redirect(url_for('enter_expiration_date', barcode=barcode_data))
-    
+
     cap.release()
     cv2.destroyAllWindows()
     return "Scan complete."
